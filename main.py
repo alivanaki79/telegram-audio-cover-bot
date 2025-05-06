@@ -1,4 +1,4 @@
-import os, json
+import os, json, requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 from mutagen.mp3 import MP3
@@ -37,11 +37,23 @@ async def set_artist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_config(config)
     await update.message.reply_text(f"نام خواننده به {config['artist_name']} تغییر یافت.")
 
-import requests
+async def set_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("شما اجازه این کار را ندارید.")
+        return
+    if not update.message.photo:
+        await update.message.reply_text("لطفاً یک عکس ارسال کنید.")
+        return
+    file = await update.message.photo[-1].get_file()
+    await file.download_to_drive("cover.jpg")
+
+    config = load_config()
+    config["cover_path"] = "cover.jpg"
+    save_config(config)
+    await update.message.reply_text("کاور جدید با موفقیت ذخیره شد.")
 
 def send_audio_with_thumb(token, channel_username, audio_path, title, performer, thumb_path):
     url = f"https://api.telegram.org/bot{token}/sendAudio"
-
     with open(audio_path, 'rb') as audio_file, open(thumb_path, 'rb') as thumb_file:
         files = {
             'audio': audio_file,
@@ -64,7 +76,6 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_path = "input.mp3"
     await file.download_to_drive(file_path)
 
-    # تبدیل به فرمت مناسب
     sound = AudioSegment.from_mp3(file_path)
     sound.export("edited.mp3", format="mp3")
 
@@ -74,12 +85,10 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
-    # خواندن تنظیمات
     config = load_config()
     artist_name = config.get("artist_name", "@Unknown")
     cover_path = config.get("cover_path", "cover.jpg")
 
-    # افزودن کاور و نام هنرمند
     with open(cover_path, "rb") as img:
         audio.tags.add(APIC(
             encoding=3,
@@ -92,7 +101,6 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     audio["TPE1"] = TPE1(encoding=3, text=[artist_name])
     audio.save()
 
-    # ارسال فایل با thumbnail واقعی
     send_audio_with_thumb(
         BOT_TOKEN,
         CHANNEL_USERNAME,
@@ -111,4 +119,3 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.PHOTO & filters.CaptionRegex(r'^/setcover'), set_cover))
     app.add_handler(MessageHandler(filters.AUDIO, handle_audio))
     app.run_polling()
-
