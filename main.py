@@ -53,6 +53,7 @@ async def set_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("کاور جدید با موفقیت ذخیره شد.")
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📥 Audio received")
     if not update.message.audio:
         return
 
