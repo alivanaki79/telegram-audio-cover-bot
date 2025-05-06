@@ -5,6 +5,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, TPE1
 from pydub import AudioSegment
 from dotenv import load_dotenv
+from PIL import Image
 
 load_dotenv()
 
@@ -51,8 +52,6 @@ async def set_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     config["cover_path"] = "cover.jpg"
     save_config(config)
     await update.message.reply_text("کاور جدید با موفقیت ذخیره شد.")
-
-from PIL import Image
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("📥 Audio received")
