@@ -52,6 +52,8 @@ async def set_cover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_config(config)
     await update.message.reply_text("کاور جدید با موفقیت ذخیره شد.")
 
+from PIL import Image
+
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("📥 Audio received")
     if not update.message.audio:
@@ -61,9 +63,11 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_path = "input.mp3"
     await file.download_to_drive(file_path)
 
+    # تبدیل به MP3 برای اطمینان از فرمت
     sound = AudioSegment.from_mp3(file_path)
     sound.export("edited.mp3", format="mp3")
 
+    # بارگذاری فایل برای افزودن تگ‌ها
     audio = MP3("edited.mp3", ID3=ID3)
     try:
         audio.add_tags()
@@ -74,18 +78,32 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     artist_name = config.get("artist_name", "@Unknown")
     cover_path = config.get("cover_path", "cover.jpg")
 
-    with open(cover_path, "rb") as img:
+    # ری‌سایز کاور به 600x600
+    img = Image.open(cover_path).convert("RGB")
+    img = img.resize((600, 600))
+    resized_cover_path = "resized_cover.jpg"
+    img.save(resized_cover_path, format="JPEG")
+
+    # حذف کاورهای قبلی
+    for tag in list(audio.tags.keys()):
+        if tag.startswith("APIC"):
+            del audio.tags[tag]
+
+    # افزودن کاور جدید
+    with open(resized_cover_path, "rb") as img_file:
         audio.tags.add(APIC(
             encoding=3,
             mime='image/jpeg',
-            type=3,
-            desc=u'Cover',
-            data=img.read()
+            type=3,  # Front Cover
+            desc='Cover',
+            data=img_file.read()
         ))
 
+    # افزودن نام هنرمند
     audio["TPE1"] = TPE1(encoding=3, text=[artist_name])
     audio.save()
 
+    # ارسال به کانال
     await context.bot.send_audio(
         chat_id=CHANNEL_USERNAME,
         audio=open("edited.mp3", "rb"),
@@ -95,6 +113,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     os.remove("input.mp3")
     os.remove("edited.mp3")
+    os.remove(resized_cover_path)
 
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
