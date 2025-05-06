@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+admin_ids = list(map(int, os.getenv("ADMIN_IDS", "").split(",")))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME")
 
@@ -22,8 +23,7 @@ def save_config(config):
         json.dump(config, f, indent=4)
 
 def is_admin(user_id):
-    config = load_config()
-    return user_id in config.get("admin_ids", [])
+    return user_id in admin_ids
 
 async def set_artist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
